@@ -20,7 +20,7 @@
 #include "ament_index_cpp/get_resources.hpp"
 #include "ament_index_cpp/get_package_prefix.hpp"
 
-#include "Poco/SharedLibrary.h"
+#include "rcutils/shared_library.h"
 
 #include "rcutils/strdup.h"
 
@@ -63,37 +63,55 @@ std::string get_package_library_path(const std::string & package_name)
 CdrConverter::CdrConverter()
 {
   auto library_path = get_package_library_path("rmw_fastrtps_cpp");
-  std::shared_ptr<Poco::SharedLibrary> library;
-  try {
-    library = std::make_shared<Poco::SharedLibrary>(library_path);
-  } catch (Poco::LibraryLoadException &) {
-    throw std::runtime_error(
-            std::string("poco exception: library could not be found:") + library_path);
+  rcutils_shared_library_t * library = nullptr;
+  rcutils_allocator_t allocator = rcutils_get_default_allocator();
+
+  library = static_cast<rcutils_shared_library_t *>(allocator.allocate(
+          sizeof(rcutils_shared_library_t), allocator.state));
+  if (!library) {
+    throw std::runtime_error("failed to allocate memory");
+  }
+  *library = rcutils_get_zero_initialized_shared_library();
+
+  rcutils_ret_t ret = rcutils_load_shared_library(library, library_path.c_str());
+  if (ret != RCUTILS_RET_OK) {
+    if (ret == RCUTILS_RET_BAD_ALLOC) {
+      throw std::runtime_error(
+            std::string("rcutils shared_library exception: failed to allocate memory"));
+    }
+    if (ret == RCUTILS_RET_INVALID_ARGUMENT) {
+      throw std::runtime_error(
+            std::string("rcutils shared_library exception: invalid arguments"));
+    }
+    if (ret == RCUTILS_RET_ERROR) {
+      throw std::runtime_error(
+            std::string("rcutils shared_library exception: library could not be found:") + library_path);
+    }
   }
 
   std::string serialize_symbol = "rmw_serialize";
   std::string deserialize_symbol = "rmw_deserialize";
 
-  if (!library->hasSymbol(serialize_symbol)) {
+  if (!rcutils_has_symbol(library, serialize_symbol.c_str())) {
     throw std::runtime_error(
-            std::string("poco exception: symbol not found: ") + serialize_symbol);
+            std::string("rcutils exception: symbol not found: ") + serialize_symbol);
   }
 
-  if (!library->hasSymbol(deserialize_symbol)) {
+  if (!rcutils_has_symbol(library, deserialize_symbol.c_str())) {
     throw std::runtime_error(
-            std::string("poco exception: symbol not found: ") + deserialize_symbol);
+            std::string("rcutils exception: symbol not found: ") + deserialize_symbol);
   }
 
-  serialize_fcn_ = (decltype(serialize_fcn_))library->getSymbol(serialize_symbol);
+  serialize_fcn_ = (decltype(serialize_fcn_))rcutils_get_symbol(library, serialize_symbol.c_str());
   if (!serialize_fcn_) {
     throw std::runtime_error(
-            std::string("poco exception: symbol of wrong type: ") + serialize_symbol);
+            std::string("rcutils exception: symbol of wrong type: ") + serialize_symbol);
   }
 
-  deserialize_fcn_ = (decltype(deserialize_fcn_))library->getSymbol(deserialize_symbol);
+  deserialize_fcn_ = (decltype(deserialize_fcn_))rcutils_get_symbol(library, deserialize_symbol.c_str());
   if (!deserialize_fcn_) {
     throw std::runtime_error(
-            std::string("poco exception: symbol of wrong type: ") + deserialize_symbol);
+            std::string("rcutils exception: symbol of wrong type: ") + deserialize_symbol);
   }
 }
 

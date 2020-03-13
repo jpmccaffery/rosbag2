@@ -22,8 +22,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(ament_index_cpp REQUIRED)
-find_package(poco_vendor REQUIRED)
-find_package(Poco COMPONENTS Foundation)
+find_package(rcutils COMPONENTS Foundation)
 find_package(pluginlib REQUIRED)
 find_package(rcutils REQUIRED)
 find_package(rmw REQUIRED)
@@ -38,7 +37,7 @@ if(rmw_fastrtps_cpp_FOUND)
   ament_target_dependencies(${PROJECT_NAME}
     ament_index_cpp
     pluginlib
-    Poco
+    rcutils
     rcutils
     rmw
     rosbag2_cpp

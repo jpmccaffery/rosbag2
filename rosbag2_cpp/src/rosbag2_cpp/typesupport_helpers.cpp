@@ -23,7 +23,7 @@
 #include "ament_index_cpp/get_resources.hpp"
 #include "ament_index_cpp/get_package_prefix.hpp"
 
-#include "Poco/SharedLibrary.h"
+#include "rcutils/shared_library.h"
 
 #include "rosidl_generator_cpp/message_type_support_decl.hpp"
 
@@ -105,33 +105,41 @@ get_typesupport(const std::string & type, const std::string & typesupport_identi
   std::string type_name;
   std::tie(package_name, middle_module, type_name) = extract_type_identifier(type);
 
-  std::string poco_dynamic_loading_error = "Something went wrong loading the typesupport library "
+  std::string rcutils_dynamic_loading_error = "Something went wrong loading the typesupport library "
     "for message type " + package_name + "/" + type_name + ".";
 
   auto library_path = get_typesupport_library_path(package_name, typesupport_identifier);
 
-  try {
-    auto typesupport_library = std::make_shared<Poco::SharedLibrary>(library_path);
+  rcutils_shared_library_t * typesupport_library = nullptr;
+  rcutils_allocator_t allocator = rcutils_get_default_allocator();
 
-    auto symbol_name = typesupport_identifier + "__get_message_type_support_handle__" +
-      package_name + "__" + (middle_module.empty() ? "msg" : middle_module) + "__" + type_name;
-
-    if (!typesupport_library->hasSymbol(symbol_name)) {
-      throw std::runtime_error(poco_dynamic_loading_error + " Symbol not found.");
-    }
-
-    const rosidl_message_type_support_t * (* get_ts)() = nullptr;
-    get_ts = (decltype(get_ts))typesupport_library->getSymbol(symbol_name);
-    auto type_support = get_ts();
-
-    if (!type_support) {
-      throw std::runtime_error(poco_dynamic_loading_error + " Symbol of wrong type.");
-    }
-
-    return type_support;
-  } catch (Poco::LibraryLoadException &) {
-    throw std::runtime_error(poco_dynamic_loading_error + " Library could not be found.");
+  typesupport_library = static_cast<rcutils_shared_library_t *>(allocator.allocate(
+          sizeof(rcutils_shared_library_t), allocator.state));
+  if (!typesupport_library) {
+    throw std::runtime_error("failed to allocate memory");
   }
+  *typesupport_library = rcutils_get_zero_initialized_shared_library();
+
+  rcutils_ret_t ret = rcutils_load_shared_library(typesupport_library, library_path.c_str());
+  if (ret != RCUTILS_RET_OK) {
+    throw std::runtime_error(rcutils_dynamic_loading_error + " Library could not be found.");
+  }
+
+  auto symbol_name = typesupport_identifier + "__get_message_type_support_handle__" +
+    package_name + "__" + (middle_module.empty() ? "msg" : middle_module) + "__" + type_name;
+
+  if (!rcutils_get_symbol(typesupport_library, symbol_name.c_str())) {
+    throw std::runtime_error(rcutils_dynamic_loading_error + " Symbol not found.");
+  }
+
+  const rosidl_message_type_support_t * (* get_ts)() = nullptr;
+  get_ts = (decltype(get_ts))rcutils_get_symbol(typesupport_library, symbol_name.c_str());
+
+  if (!get_ts) {
+    throw std::runtime_error(rcutils_dynamic_loading_error + " Symbol of wrong type.");
+  }
+  auto type_support = get_ts();
+  return type_support;
 }
 
 }  // namespace rosbag2_cpp

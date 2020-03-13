@@ -11,7 +11,6 @@
 
   <depend>ament_index_cpp</depend>
   <depend>pluginlib</depend>
-  <depend>poco_vendor</depend>
   <depend>rosidl_generator_cpp</depend>
   <depend>rcutils</depend>
   <depend>rmw</depend>

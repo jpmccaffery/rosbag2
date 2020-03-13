@@ -30,8 +30,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(pluginlib REQUIRED)
-find_package(poco_vendor)
-find_package(Poco COMPONENTS Foundation)
+find_package(rcutils)
 find_package(rcpputils REQUIRED)
 find_package(rcutils REQUIRED)
 find_package(rosbag2_storage REQUIRED)
@@ -54,7 +53,7 @@ add_library(${PROJECT_NAME} SHARED
 ament_target_dependencies(${PROJECT_NAME}
   ament_index_cpp
   pluginlib
-  Poco
+  rcutils
   rcpputils
   rcutils
   rosbag2_storage
@@ -160,7 +159,7 @@ if(BUILD_TESTING)
       $<INSTALL_INTERFACE:include>)
     ament_target_dependencies(test_ros2_message
       ament_index_cpp
-      Poco
+      rcutils
       rcutils
       rosbag2_storage
       rosidl_generator_cpp
