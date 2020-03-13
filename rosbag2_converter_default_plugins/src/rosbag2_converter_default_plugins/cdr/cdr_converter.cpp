@@ -67,7 +67,7 @@ CdrConverter::CdrConverter()
   rcutils_allocator_t allocator = rcutils_get_default_allocator();
 
   library = static_cast<rcutils_shared_library_t *>(allocator.allocate(
-          sizeof(rcutils_shared_library_t), allocator.state));
+      sizeof(rcutils_shared_library_t), allocator.state));
   if (!library) {
     throw std::runtime_error("failed to allocate memory");
   }
@@ -77,15 +77,16 @@ CdrConverter::CdrConverter()
   if (ret != RCUTILS_RET_OK) {
     if (ret == RCUTILS_RET_BAD_ALLOC) {
       throw std::runtime_error(
-            std::string("rcutils shared_library exception: failed to allocate memory"));
+              std::string("rcutils shared_library exception: failed to allocate memory"));
     }
     if (ret == RCUTILS_RET_INVALID_ARGUMENT) {
       throw std::runtime_error(
-            std::string("rcutils shared_library exception: invalid arguments"));
+              std::string("rcutils shared_library exception: invalid arguments"));
     }
     if (ret == RCUTILS_RET_ERROR) {
       throw std::runtime_error(
-            std::string("rcutils shared_library exception: library could not be found:") + library_path);
+              std::string(
+                "rcutils shared_library exception: library could not be found:") + library_path);
     }
   }
 
@@ -108,7 +109,9 @@ CdrConverter::CdrConverter()
             std::string("rcutils exception: symbol of wrong type: ") + serialize_symbol);
   }
 
-  deserialize_fcn_ = (decltype(deserialize_fcn_))rcutils_get_symbol(library, deserialize_symbol.c_str());
+  deserialize_fcn_ = (decltype(deserialize_fcn_))rcutils_get_symbol(
+    library,
+    deserialize_symbol.c_str());
   if (!deserialize_fcn_) {
     throw std::runtime_error(
             std::string("rcutils exception: symbol of wrong type: ") + deserialize_symbol);
