@@ -105,7 +105,8 @@ get_typesupport(const std::string & type, const std::string & typesupport_identi
   std::string type_name;
   std::tie(package_name, middle_module, type_name) = extract_type_identifier(type);
 
-  std::string rcutils_dynamic_loading_error = "Something went wrong loading the typesupport library "
+  std::string rcutils_dynamic_loading_error =
+    "Something went wrong loading the typesupport library "
     "for message type " + package_name + "/" + type_name + ".";
 
   auto library_path = get_typesupport_library_path(package_name, typesupport_identifier);
@@ -114,7 +115,7 @@ get_typesupport(const std::string & type, const std::string & typesupport_identi
   rcutils_allocator_t allocator = rcutils_get_default_allocator();
 
   typesupport_library = static_cast<rcutils_shared_library_t *>(allocator.allocate(
-          sizeof(rcutils_shared_library_t), allocator.state));
+      sizeof(rcutils_shared_library_t), allocator.state));
   if (!typesupport_library) {
     throw std::runtime_error("failed to allocate memory");
   }
