@@ -119,7 +119,18 @@ get_typesupport(const std::string & type, const std::string & typesupport_identi
   rcutils_ret_t ret = rcutils_load_shared_library(typesupport_library, library_path.c_str());
   if (ret != RCUTILS_RET_OK) {
     delete typesupport_library;
-    throw std::runtime_error(rcutils_dynamic_loading_error + " Library could not be found.");
+    if (ret == RCUTILS_RET_BAD_ALLOC) {
+      throw std::runtime_error(
+              std::string(rcutils_dynamic_loading_error + " failed to allocate memory"));
+    } else if (ret == RCUTILS_RET_INVALID_ARGUMENT) {
+      throw std::runtime_error(
+              std::string(rcutils_dynamic_loading_error + " invalid arguments"));
+    } else {
+      throw std::runtime_error(
+              std::string(
+                rcutils_dynamic_loading_error + " Library could not be found " +
+                library_path));
+    }
   }
 
   auto symbol_name = typesupport_identifier + "__get_message_type_support_handle__" +

@@ -74,12 +74,10 @@ CdrConverter::CdrConverter()
     if (ret == RCUTILS_RET_BAD_ALLOC) {
       throw std::runtime_error(
               std::string("rcutils shared_library exception: failed to allocate memory"));
-    }
-    if (ret == RCUTILS_RET_INVALID_ARGUMENT) {
+    } else if (ret == RCUTILS_RET_INVALID_ARGUMENT) {
       throw std::runtime_error(
               std::string("rcutils shared_library exception: invalid arguments"));
-    }
-    if (ret == RCUTILS_RET_ERROR) {
+    } else {
       throw std::runtime_error(
               std::string(
                 "rcutils shared_library exception: library could not be found:") + library_path);
