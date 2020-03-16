@@ -64,17 +64,13 @@ CdrConverter::CdrConverter()
 {
   auto library_path = get_package_library_path("rmw_fastrtps_cpp");
   rcutils_shared_library_t * library = nullptr;
-  rcutils_allocator_t allocator = rcutils_get_default_allocator();
 
-  library = static_cast<rcutils_shared_library_t *>(allocator.allocate(
-      sizeof(rcutils_shared_library_t), allocator.state));
-  if (!library) {
-    throw std::runtime_error("failed to allocate memory");
-  }
+  library = new rcutils_shared_library_t;
   *library = rcutils_get_zero_initialized_shared_library();
 
   rcutils_ret_t ret = rcutils_load_shared_library(library, library_path.c_str());
   if (ret != RCUTILS_RET_OK) {
+    delete library;
     if (ret == RCUTILS_RET_BAD_ALLOC) {
       throw std::runtime_error(
               std::string("rcutils shared_library exception: failed to allocate memory"));
@@ -94,17 +90,20 @@ CdrConverter::CdrConverter()
   std::string deserialize_symbol = "rmw_deserialize";
 
   if (!rcutils_has_symbol(library, serialize_symbol.c_str())) {
+    delete library;
     throw std::runtime_error(
             std::string("rcutils exception: symbol not found: ") + serialize_symbol);
   }
 
   if (!rcutils_has_symbol(library, deserialize_symbol.c_str())) {
+    delete library;
     throw std::runtime_error(
             std::string("rcutils exception: symbol not found: ") + deserialize_symbol);
   }
 
   serialize_fcn_ = (decltype(serialize_fcn_))rcutils_get_symbol(library, serialize_symbol.c_str());
   if (!serialize_fcn_) {
+    delete library;
     throw std::runtime_error(
             std::string("rcutils exception: symbol of wrong type: ") + serialize_symbol);
   }
@@ -113,6 +112,7 @@ CdrConverter::CdrConverter()
     library,
     deserialize_symbol.c_str());
   if (!deserialize_fcn_) {
+    delete library;
     throw std::runtime_error(
             std::string("rcutils exception: symbol of wrong type: ") + deserialize_symbol);
   }

@@ -112,17 +112,13 @@ get_typesupport(const std::string & type, const std::string & typesupport_identi
   auto library_path = get_typesupport_library_path(package_name, typesupport_identifier);
 
   rcutils_shared_library_t * typesupport_library = nullptr;
-  rcutils_allocator_t allocator = rcutils_get_default_allocator();
 
-  typesupport_library = static_cast<rcutils_shared_library_t *>(allocator.allocate(
-      sizeof(rcutils_shared_library_t), allocator.state));
-  if (!typesupport_library) {
-    throw std::runtime_error("failed to allocate memory");
-  }
+  typesupport_library = new rcutils_shared_library_t;
   *typesupport_library = rcutils_get_zero_initialized_shared_library();
 
   rcutils_ret_t ret = rcutils_load_shared_library(typesupport_library, library_path.c_str());
   if (ret != RCUTILS_RET_OK) {
+    delete typesupport_library;
     throw std::runtime_error(rcutils_dynamic_loading_error + " Library could not be found.");
   }
 
@@ -130,6 +126,7 @@ get_typesupport(const std::string & type, const std::string & typesupport_identi
     package_name + "__" + (middle_module.empty() ? "msg" : middle_module) + "__" + type_name;
 
   if (!rcutils_get_symbol(typesupport_library, symbol_name.c_str())) {
+    delete typesupport_library;
     throw std::runtime_error(rcutils_dynamic_loading_error + " Symbol not found.");
   }
 
@@ -137,6 +134,7 @@ get_typesupport(const std::string & type, const std::string & typesupport_identi
   get_ts = (decltype(get_ts))rcutils_get_symbol(typesupport_library, symbol_name.c_str());
 
   if (!get_ts) {
+    delete typesupport_library;
     throw std::runtime_error(rcutils_dynamic_loading_error + " Symbol of wrong type.");
   }
   auto type_support = get_ts();
