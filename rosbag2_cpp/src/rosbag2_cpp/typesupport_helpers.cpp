@@ -15,6 +15,7 @@
 #include "rosbag2_cpp/typesupport_helpers.hpp"
 
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -105,48 +106,48 @@ get_typesupport(const std::string & type, const std::string & typesupport_identi
   std::string type_name;
   std::tie(package_name, middle_module, type_name) = extract_type_identifier(type);
 
-  std::string rcutils_dynamic_loading_error =
-    "Something went wrong loading the typesupport library "
-    "for message type " + package_name + "/" + type_name + ".";
+  std::stringstream rcutils_dynamic_loading_error;
+  rcutils_dynamic_loading_error <<
+    "Something went wrong loading the typesupport library for message type " << package_name <<
+    "/" << type_name << ".";
 
   auto library_path = get_typesupport_library_path(package_name, typesupport_identifier);
 
-  rcutils_shared_library_t * typesupport_library = nullptr;
-
-  typesupport_library = new rcutils_shared_library_t;
+  std::unique_ptr<rcutils_shared_library_t> typesupport_library =
+    std::make_unique<rcutils_shared_library_t>();
   *typesupport_library = rcutils_get_zero_initialized_shared_library();
 
-  rcutils_ret_t ret = rcutils_load_shared_library(typesupport_library, library_path.c_str());
+  rcutils_ret_t ret = rcutils_load_shared_library(typesupport_library.get(), library_path.c_str());
   if (ret != RCUTILS_RET_OK) {
-    delete typesupport_library;
     if (ret == RCUTILS_RET_BAD_ALLOC) {
-      throw std::runtime_error(
-              std::string(rcutils_dynamic_loading_error + " failed to allocate memory"));
+      throw std::runtime_error{rcutils_dynamic_loading_error.str() + std::string(
+                " failed to allocate memory")};
     } else if (ret == RCUTILS_RET_INVALID_ARGUMENT) {
-      throw std::runtime_error(
-              std::string(rcutils_dynamic_loading_error + " invalid arguments"));
+      throw std::runtime_error{rcutils_dynamic_loading_error.str() + std::string(
+                " invalid arguments")};
     } else {
-      throw std::runtime_error(
-              std::string(
-                rcutils_dynamic_loading_error + " Library could not be found " +
-                library_path));
+      throw std::runtime_error{
+              rcutils_dynamic_loading_error.str() + std::string(" Library could not be found ") +
+              library_path};
     }
   }
 
   auto symbol_name = typesupport_identifier + "__get_message_type_support_handle__" +
     package_name + "__" + (middle_module.empty() ? "msg" : middle_module) + "__" + type_name;
 
-  if (!rcutils_get_symbol(typesupport_library, symbol_name.c_str())) {
-    delete typesupport_library;
-    throw std::runtime_error(rcutils_dynamic_loading_error + " Symbol not found.");
+  if (!rcutils_get_symbol(typesupport_library.get(), symbol_name.c_str())) {
+    throw std::runtime_error{
+            rcutils_dynamic_loading_error.str() +
+            std::string(" Symbol not found.")};
   }
 
   const rosidl_message_type_support_t * (* get_ts)() = nullptr;
-  get_ts = (decltype(get_ts))rcutils_get_symbol(typesupport_library, symbol_name.c_str());
+  get_ts = (decltype(get_ts))rcutils_get_symbol(typesupport_library.get(), symbol_name.c_str());
 
   if (!get_ts) {
-    delete typesupport_library;
-    throw std::runtime_error(rcutils_dynamic_loading_error + " Symbol of wrong type.");
+    throw std::runtime_error{
+            rcutils_dynamic_loading_error.str() +
+            std::string(" Symbol of wrong type.")};
   }
   auto type_support = get_ts();
   return type_support;

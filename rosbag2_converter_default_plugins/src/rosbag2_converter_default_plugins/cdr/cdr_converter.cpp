@@ -63,56 +63,50 @@ std::string get_package_library_path(const std::string & package_name)
 CdrConverter::CdrConverter()
 {
   auto library_path = get_package_library_path("rmw_fastrtps_cpp");
-  rcutils_shared_library_t * library = nullptr;
 
-  library = new rcutils_shared_library_t;
+  std::unique_ptr<rcutils_shared_library_t> library =
+    std::make_unique<rcutils_shared_library_t>();
   *library = rcutils_get_zero_initialized_shared_library();
 
-  rcutils_ret_t ret = rcutils_load_shared_library(library, library_path.c_str());
+  rcutils_ret_t ret = rcutils_load_shared_library(library.get(), library_path.c_str());
   if (ret != RCUTILS_RET_OK) {
-    delete library;
     if (ret == RCUTILS_RET_BAD_ALLOC) {
-      throw std::runtime_error(
-              std::string("rcutils shared_library exception: failed to allocate memory"));
+      throw std::runtime_error{"rcutils shared_library exception: failed to allocate memory"};
     } else if (ret == RCUTILS_RET_INVALID_ARGUMENT) {
-      throw std::runtime_error(
-              std::string("rcutils shared_library exception: invalid arguments"));
+      throw std::runtime_error{"rcutils shared_library exception: invalid arguments"};
     } else {
-      throw std::runtime_error(
-              std::string(
-                "rcutils shared_library exception: library could not be found:") + library_path);
+      throw std::runtime_error{"rcutils shared_library exception: library could not be found:" +
+              library_path};
     }
   }
 
   std::string serialize_symbol = "rmw_serialize";
   std::string deserialize_symbol = "rmw_deserialize";
 
-  if (!rcutils_has_symbol(library, serialize_symbol.c_str())) {
-    delete library;
-    throw std::runtime_error(
-            std::string("rcutils exception: symbol not found: ") + serialize_symbol);
+  if (!rcutils_has_symbol(library.get(), serialize_symbol.c_str())) {
+    throw std::runtime_error{std::string("rcutils exception: symbol not found: ") +
+            serialize_symbol};
   }
 
-  if (!rcutils_has_symbol(library, deserialize_symbol.c_str())) {
-    delete library;
-    throw std::runtime_error(
-            std::string("rcutils exception: symbol not found: ") + deserialize_symbol);
+  if (!rcutils_has_symbol(library.get(), deserialize_symbol.c_str())) {
+    throw std::runtime_error{
+            std::string("rcutils exception: symbol not found: ") + deserialize_symbol};
   }
 
-  serialize_fcn_ = (decltype(serialize_fcn_))rcutils_get_symbol(library, serialize_symbol.c_str());
+  serialize_fcn_ = (decltype(serialize_fcn_))rcutils_get_symbol(
+    library.get(),
+    serialize_symbol.c_str());
   if (!serialize_fcn_) {
-    delete library;
-    throw std::runtime_error(
-            std::string("rcutils exception: symbol of wrong type: ") + serialize_symbol);
+    throw std::runtime_error{
+            std::string("rcutils exception: symbol of wrong type: ") + serialize_symbol};
   }
 
   deserialize_fcn_ = (decltype(deserialize_fcn_))rcutils_get_symbol(
-    library,
+    library.get(),
     deserialize_symbol.c_str());
   if (!deserialize_fcn_) {
-    delete library;
-    throw std::runtime_error(
-            std::string("rcutils exception: symbol of wrong type: ") + deserialize_symbol);
+    throw std::runtime_error{
+            std::string("rcutils exception: symbol of wrong type: ") + deserialize_symbol};
   }
 }
 
